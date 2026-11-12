@@ -491,8 +491,29 @@ kinds of items for the example module: the container "sensorObject"
 "sensorValue" (60009), and "statusLED" (60010) have a "type", and the
 list "sensorReadings" (60007) has "keys".
 
+Without any indication, a reader has to parse the items until it finds a
+"type" or a "keys" to know that the file is extended. The "sid-extensions"
+leaf, added at the "sid-file" level, gives this information in the header:
+it is true when the items carry a "type" or a "keys", and its default value
+is false, so that a .sid file without extension {{RFC9595}} does not need
+it. The choice of an item is only valid when "sid-extensions" is true. The
+leaf is not checked against the content of the items: it can be true even if
+no item contains a "type" or a "keys".
+
 ~~~~
-...
+{
+  "ietf-sid-file:sid-file": {
+    "module-name": "sensor",
+    "module-revision": "2026-11-02",
+    "ietf-sid-file-extension:sid-extensions": true,
+    "assignment-range": [
+      {
+        "entry-point": "60000",
+        "size": "100"
+      }
+    ],
+    "item": [
+      ...
       {
         "namespace": "data",
         "identifier": "/sensor:sensorObject",
@@ -558,7 +579,9 @@ list "sensorReadings" (60007) has "keys".
           }
         ]
       }
-...
+    ]
+  }
+}
 ~~~~
 {: #Fig-SID-extension title="SID file with the type and keys extension."}
 
@@ -654,7 +677,7 @@ item, either the type information of a leaf or a leaf-list, or the keys
 of a list.
 
 ~~~~ yang
-<CODE BEGINS> file "ietf-sid-file-extension@2026-11-04.yang"
+<CODE BEGINS> file "ietf-sid-file-extension@2026-11-12.yang"
 module ietf-sid-file-extension {
   yang-version 1.1;
   namespace "urn:ietf:params:xml:ns:yang:ietf-sid-file-extension";
@@ -684,6 +707,16 @@ module ietf-sid-file-extension {
     "Augmentation of ietf-sid-file to add, to each item, the type
      information of a leaf or a leaf-list, or the key leaves of a
      list.";
+
+  revision 2026-11-12 {
+    description
+      "The sid-extensions leaf is added at the sid-file level: it
+       is true when the items carry type information or keys, so
+       that a reader does not have to parse the items to know it.
+       The node-info choice of an item is only valid when
+       sid-extensions is true.";
+    reference "draft-toutain-core-sid-extension";
+  }
 
   revision 2026-11-04 {
     description
@@ -834,6 +867,21 @@ module ietf-sid-file-extension {
        defined in this module.";
   }
 
+  // --- Augmentation: indication of the extensions in the header ---
+  sx:augment-structure "/sid:sid-file" {
+    description
+      "Indicates at the sid-file level that the items carry
+       extensions.";
+    leaf sid-extensions {
+      type boolean;
+      default "false";
+      description
+        "True when the items carry type information or keys.
+         A SID file without extension, as defined in RFC 9595,
+         does not need this leaf.";
+    }
+  }
+
   // --- Augmentation: type or keys of each item ---
   sx:augment-structure "/sid:sid-file/sid:item" {
     // This augmentation targets the item list of the
@@ -841,6 +889,7 @@ module ietf-sid-file-extension {
     description
       "Adds type information or key leaves to each SID item.";
     choice node-info {
+      when "/sid:sid-file/sid-ext:sid-extensions = 'true'";
       description
         "Type information for a leaf or a leaf-list, or the key
          leaves for a list.";
