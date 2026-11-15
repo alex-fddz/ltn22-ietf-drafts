@@ -3,7 +3,7 @@ v: 3
 
 title: CORECONF Rule management for SCHC
 abbrev: SCHC for CoAP
-docname: draft-toutain-schc-coreconf-management-01
+docname: draft-toutain-schc-coreconf-management-02
 ipr: trust200902
 
 v3xml2rfc:
