@@ -58,8 +58,9 @@ module ietf-schc-ccm2m-mgmt {
       "The values of the application (group-parameters) are optional
        in 'create-rule-group': the fields which are not given stay
        ignored in the Rules of the group. The group is then created
-       with the number of the group and the template only. The SIDs
-       are allocated again.";
+       with the number of the group and the template only. The
+       input 'details' of 'list-rule-groups' gives the content of the
+       groups. The SIDs are allocated again.";
     reference
       "draft-toutain-schc-coreconf-management CORECONF Rule
        management for SCHC";
@@ -271,7 +272,19 @@ module ietf-schc-ccm2m-mgmt {
        (candidate Rules) or deleted (invalid Rules, the Guard period is
        running) is not listed. The Core can use the list to know the
        applications the device has Rules for, for instance after it has
-       lost its own state, and to find the number of the next group.";
+       lost its own state, and to find the number of the next group.
+       By default only the numbers of the groups are returned; the
+       input 'details' asks for their content.";
+    input {
+      leaf details {
+        type boolean;
+        default "false";
+        description
+          "When true, the content of each group is returned (its
+           template and its parameters). By default (false) only the
+           number of the groups is returned.";
+      }
+    }
     output {
       list group {
         key "group-id";
@@ -288,9 +301,14 @@ module ietf-schc-ccm2m-mgmt {
           }
           description
             "Template the Rules of the group have been duplicated
-             from.";
+             from. Only present when 'details' is true.";
         }
-        uses group-parameters;
+        uses group-parameters {
+          description
+            "The parameters of the application of the group, present
+             when 'details' is true and when they have been given at
+             the creation of the group.";
+        }
       }
     }
   }
