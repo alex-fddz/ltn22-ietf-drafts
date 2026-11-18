@@ -60,7 +60,10 @@ module ietf-schc-ccm2m-mgmt {
        ignored in the Rules of the group. The group is then created
        with the number of the group and the template only. The
        input 'details' of 'list-rule-groups' gives the content of the
-       groups. The SIDs are allocated again.";
+       groups. The leaf 'device' of the context tells that the device
+       is constrained or full-stack: a constrained device has its
+       groups created without the values of the application. The
+       SIDs are allocated again.";
     reference
       "draft-toutain-schc-coreconf-management CORECONF Rule
        management for SCHC";
@@ -130,6 +133,39 @@ module ietf-schc-ccm2m-mgmt {
          of the 'fid-ipv6-trafficclass' field of the Rules of the
          group. When this parameter is absent, the field is still
          ignored in the Rules of the group.";
+    }
+  }
+
+  augment "/schc:context" {
+    if-feature "schc:management";
+    description
+      "Parameter of the groups of Rules of the whole context.";
+    leaf device {
+      type enumeration {
+        enum full-stack {
+          value 0;
+          description
+            "The device is a full-stack device: a group of Rules is
+             created for each application, with the values of the
+             application (group-parameters), which are elided by the
+             Rules of the group.";
+        }
+        enum constrained {
+          value 1;
+          description
+            "The device is constrained: the groups of Rules are
+             created with the number of the group and the template
+             only. The values of the application (group-parameters)
+             are not given to 'create-rule-group', so the fields of
+             the application stay ignored in the Rules of the group,
+             whatever the application is, and there is a single group
+             for all of them.";
+        }
+      }
+      default "full-stack";
+      description
+        "Kind of device, which gives the way its groups of Rules are
+         created.";
     }
   }
 
