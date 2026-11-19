@@ -179,10 +179,13 @@ module ietf-schc-ccm2m-mgmt {
              of the group, in both directions. The Core keeps the
              values as the Target Values of its own Rules of the
              group, to compress the packets to the device and to
-             restore the fields of the packets from the device. There
-             is a single group for all the applications: when a packet
-             of another application arrives, the Core changes these
-             values, with no RPC.";
+             restore the fields of the packets from the device. Each
+             application has its own group, as for a full-stack
+             device, which it keeps as long as the group exists: the
+             device can send a notification at any time, which the
+             Core restores with the values of the group. When no group
+             number is free, the packets of a new application are
+             discarded.";
         }
       }
       default "full-stack";
