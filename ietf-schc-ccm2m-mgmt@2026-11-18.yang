@@ -56,8 +56,9 @@ module ietf-schc-ccm2m-mgmt {
   revision 2026-11-18 {
     description
       "The values of the application (group-parameters) are optional
-       in 'create-rule-group': the fields which are not given stay
-       ignored in the Rules of the group. The group is then created
+       in 'create-rule-group': the fields which are not given are
+       unknown to the device, which ignores them and does not send
+       them; the Core keeps their values. The group is then created
        with the number of the group and the template only. The
        input 'details' of 'list-rule-groups' gives the content of the
        groups. The leaf 'device' of the context tells that the device
@@ -104,8 +105,9 @@ module ietf-schc-ccm2m-mgmt {
          order): the value of the 'fid-ipv6-appprefix' and
          'fid-ipv6-appiid' fields of the Rules of the group, which
          are ignored in the trigger Rules. When this parameter is
-         absent, the fields are still ignored in the Rules of the
-         group.";
+         absent (constrained device), the device does not know the
+         value: the fields are ignored and not sent in its Rules of
+         the group.";
     }
     leaf app-port {
       type inet:port-number;
@@ -113,8 +115,9 @@ module ietf-schc-ccm2m-mgmt {
         "UDP port of the application: the value of the
          'fid-udp-app-port' field of the Rules of the group, which
          is ignored in the trigger Rules. When this parameter is
-         absent, the field is still ignored in the Rules of the
-         group.";
+         absent (constrained device), the device does not know the
+         value: the field is ignored and not sent in its Rules of
+         the group.";
     }
     leaf flow-label {
       type uint32 {
@@ -123,16 +126,18 @@ module ietf-schc-ccm2m-mgmt {
       description
         "IPv6 Flow Label (20 bits) of the application: the value of
          the 'fid-ipv6-flowlabel' field of the Rules of the group.
-         When this parameter is absent, the field is still ignored
-         in the Rules of the group.";
+         When this parameter is absent (constrained device),
+         the device does not know the value: the field is ignored
+         and not sent in its Rules of the group.";
     }
     leaf traffic-class {
       type uint8;
       description
         "IPv6 Traffic Class (8 bits) of the application: the value
          of the 'fid-ipv6-trafficclass' field of the Rules of the
-         group. When this parameter is absent, the field is still
-         ignored in the Rules of the group.";
+         group. When this parameter is absent (constrained device),
+         the device does not know the value: the field is ignored
+         and not sent in its Rules of the group.";
     }
   }
 
@@ -156,10 +161,16 @@ module ietf-schc-ccm2m-mgmt {
             "The device is constrained: the groups of Rules are
              created with the number of the group and the template
              only. The values of the application (group-parameters)
-             are not given to 'create-rule-group', so the fields of
-             the application stay ignored in the Rules of the group,
-             whatever the application is, and there is a single group
-             for all of them.";
+             are not given to 'create-rule-group': the device does not
+             know them, it neither sends nor reads the fields of the
+             application, which are ignored and not sent in its Rules
+             of the group, in both directions. The Core keeps the
+             values as the Target Values of its own Rules of the
+             group, to compress the packets to the device and to
+             restore the fields of the packets from the device. There
+             is a single group for all the applications: when a packet
+             of another application arrives, the Core changes these
+             values, with no RPC.";
         }
       }
       default "full-stack";
@@ -224,10 +235,13 @@ module ietf-schc-ccm2m-mgmt {
        no RuleID available.
 
        Only the number of the group is needed: the values of the
-       application (group-parameters) are optional, and a field which
-       is not given stays ignored in the Rules of the group, so its
-       value is sent in each SCHC packet (CDA value-sent) instead of
-       being elided. This is the creation for a constrained device or
+       application (group-parameters) are optional. A value which is
+       not given is unknown to the device: it ignores the field in
+       the Rules of the group, which is neither sent nor read in the
+       SCHC packets, in both directions. The Core, which has the
+       values, uses them as the Target Values of its own Rules of
+       the group and restores the field of the packets of the
+       device. This is the creation for a constrained device or
        application, with the template (optional) and the number of
        the group only.";
     input {
