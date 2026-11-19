@@ -1,0 +1,463 @@
+module ietf-schc-ccm2m-mgmt {
+  yang-version 1.1;
+  namespace "urn:ietf:params:xml:ns:yang:ietf-schc-ccm2m-mgmt";
+  prefix schc-ccmgmt;
+
+  import ietf-inet-types {
+    prefix inet;
+    reference
+      "RFC 6991 Common YANG Data Types";
+  }
+  import ietf-schc {
+    prefix schc;
+    reference
+      "draft-toutain-schc-rfc9363bis A YANG Data Model for Static
+       Context Header Compression (SCHC)";
+  }
+
+  organization
+    "IETF Static Context Header Compression (schc) Working Group";
+  contact
+    "WG Web:   <https://datatracker.ietf.org/wg/schc/about/>
+     WG List:  <mailto:schc@ietf.org>
+     Editor:   Laurent Toutain
+       <mailto:laurent.toutain@imt-atlantique.fr>";
+  description
+    "Copyright (c) 2026 IETF Trust and the persons identified as
+     authors of the code.  All rights reserved.
+
+     Redistribution and use in source and binary forms, with or
+     without modification, is permitted pursuant to, and subject to
+     the license terms contained in, the Revised BSD License set
+     forth in Section 4.c of the IETF Trust's Legal Provisions
+     Relating to IETF Documents
+     (https://trustee.ietf.org/license-info).
+
+     This version of this YANG module is part of RFC XXXX
+     (https://www.rfc-editor.org/info/rfcXXXX); see the RFC itself
+     for full legal notices.
+
+     The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL
+     NOT', 'SHOULD', 'SHOULD NOT', 'RECOMMENDED', 'NOT RECOMMENDED',
+     'MAY', and 'OPTIONAL' in this document are to be interpreted as
+     described in BCP 14 (RFC 2119) (RFC 8174) when, and only when,
+     they appear in all capitals, as shown here.
+
+     This module defines the management operations of the SCHC Rules
+     for CORECONF over M2M (CCM2M): the 'create-rule-group' RPC,
+     which creates the Rules of a new application on a device, the
+     'list-rule-groups' RPC, which lists the groups which exist on
+     the device, the 'delete-rule-group' RPC, which deletes one of
+     them, and the 'reset-group' RPC, which deletes all of them at
+     once. The creation is requested after a trigger Rule has
+     matched a message of an application unknown to the device: the
+     trigger Rule ignores the values of the application, the Rules
+     of the new group set them.";
+
+  revision 2026-11-19 {
+    description
+      "Add the 'reset-group' RPC, which deletes all the groups of
+       Rules at once. It is separate from the 'reset-context' RPC of
+       ietf-schc-basic-mgmt, which resets the whole Set of Rules.
+       The SIDs of the revision 2026-11-18 do not change.";
+    reference
+      "draft-toutain-schc-coreconf-management CORECONF Rule
+       management for SCHC";
+  }
+
+  revision 2026-11-18 {
+    description
+      "The values of the application (group-parameters) are optional
+       in 'create-rule-group': the fields which are not given are
+       unknown to the device, which ignores them and does not send
+       them; the Core keeps their values. The group is then created
+       with the number of the group and the template only. The
+       input 'details' of 'list-rule-groups' gives the content of the
+       groups. The leaf 'device' of the context tells that the device
+       is constrained or full-stack: a constrained device has its
+       groups created without the values of the application. The
+       SIDs are allocated again.";
+    reference
+      "draft-toutain-schc-coreconf-management CORECONF Rule
+       management for SCHC";
+  }
+
+  revision 2026-11-17 {
+    description
+      "Augment 'ietf-schc' with the Rule templates: an entry gives
+       the list of the RuleIDs of the Rules to duplicate when a group
+       of Rules is created. The input of 'create-rule-group' refers to
+       a template, the template 0 by default, and the RuleIDs of the
+       copies are given by the number of the group. Add the RPCs
+       'list-rule-groups' and 'delete-rule-group'.";
+    reference
+      "draft-toutain-schc-coreconf-management CORECONF Rule
+       management for SCHC";
+  }
+
+  revision 2026-11-16 {
+    description
+      "Initial version, with the 'create-rule-group' RPC.";
+    reference
+      "draft-toutain-schc-coreconf-management CORECONF Rule
+       management for SCHC";
+  }
+
+  grouping group-parameters {
+    description
+      "The application of a group of Rules: the values which are
+       ignored in the trigger Rules and which are set in the Rules of
+       the group.";
+    leaf app-address {
+      type binary {
+        length "16";
+      }
+      description
+        "IPv6 address of the application, in 16 bytes (network
+         order): the value of the 'fid-ipv6-appprefix' and
+         'fid-ipv6-appiid' fields of the Rules of the group, which
+         are ignored in the trigger Rules. When this parameter is
+         absent (constrained device), the device does not know the
+         value: the fields are ignored and not sent in its Rules of
+         the group.";
+    }
+    leaf app-port {
+      type inet:port-number;
+      description
+        "UDP port of the application: the value of the
+         'fid-udp-app-port' field of the Rules of the group, which
+         is ignored in the trigger Rules. When this parameter is
+         absent (constrained device), the device does not know the
+         value: the field is ignored and not sent in its Rules of
+         the group.";
+    }
+    leaf flow-label {
+      type uint32 {
+        range "0..1048575";
+      }
+      description
+        "IPv6 Flow Label (20 bits) of the application: the value of
+         the 'fid-ipv6-flowlabel' field of the Rules of the group.
+         When this parameter is absent (constrained device),
+         the device does not know the value: the field is ignored
+         and not sent in its Rules of the group.";
+    }
+    leaf traffic-class {
+      type uint8;
+      description
+        "IPv6 Traffic Class (8 bits) of the application: the value
+         of the 'fid-ipv6-trafficclass' field of the Rules of the
+         group. When this parameter is absent (constrained device),
+         the device does not know the value: the field is ignored
+         and not sent in its Rules of the group.";
+    }
+  }
+
+  augment "/schc:context" {
+    if-feature "schc:management";
+    description
+      "Parameter of the groups of Rules of the whole context.";
+    leaf device {
+      type enumeration {
+        enum full-stack {
+          value 0;
+          description
+            "The device is a full-stack device: a group of Rules is
+             created for each application, with the values of the
+             application (group-parameters), which are elided by the
+             Rules of the group.";
+        }
+        enum constrained {
+          value 1;
+          description
+            "The device is constrained: the groups of Rules are
+             created with the number of the group and the template
+             only. The values of the application (group-parameters)
+             are not given to 'create-rule-group': the device does not
+             know them, it neither sends nor reads the fields of the
+             application, which are ignored and not sent in its Rules
+             of the group, in both directions. The Core keeps the
+             values as the Target Values of its own Rules of the
+             group, to compress the packets to the device and to
+             restore the fields of the packets from the device. There
+             is a single group for all the applications: when a packet
+             of another application arrives, the Core changes these
+             values, with no RPC.";
+        }
+      }
+      default "full-stack";
+      description
+        "Kind of device, which gives the way its groups of Rules are
+         created.";
+    }
+  }
+
+  augment "/schc:schc" {
+    if-feature "schc:management";
+    description
+      "Templates of groups of Rules.";
+    list template {
+      key "template-id";
+      description
+        "A template of a group of Rules. When a group is created, each
+         Rule of the list is duplicated: the RuleIDs of the Rules to
+         duplicate are the entries of the list. The Rules to duplicate
+         can be origin Rules, except management Rules. A device
+         usually has a single template, identified by 0.";
+      leaf template-id {
+        type uint8;
+        description
+          "Identifier of the template.";
+      }
+      list rule {
+        key "index";
+        min-elements 1;
+        description
+          "The Rules to duplicate, in the order of their duplication.";
+        leaf index {
+          type uint8;
+          description
+            "Position of the Rule in the template.";
+        }
+        uses schc:rule-id-type;
+      }
+    }
+  }
+
+  rpc create-rule-group {
+    if-feature "schc:management";
+    description
+      "Create a group of Rules for an application. Each Rule of the
+       group is the duplicate of a Rule of the template given by
+       'template-id', with the fields which are ignored in the
+       duplicated Rule (the address of the application, its UDP port,
+       the IPv6 Flow Label and the IPv6 Traffic Class) set to the
+       values given in the input. The Rules of the group are created
+       as any Rule created by management, and are never origin
+       Rules.
+
+       The copy of the Rule at the position 'index' of the template
+       has the RuleID ((group-id - 1) * n + index), where n is the
+       number of Rules of the template, on 4 bits. The group 1 uses
+       the RuleIDs 0 to n - 1, the group 2 the RuleIDs n to 2n - 1,
+       and so on. The RuleIDs of the Rules which are duplicated, the
+       ones of the templates, are on 8 bits and start with the bits
+       1111, so they do not overlap with the RuleIDs of the groups.
+       When the RuleID of a copy would be greater than 14, there is
+       no RuleID available.
+
+       Only the number of the group is needed: the values of the
+       application (group-parameters) are optional. A value which is
+       not given is unknown to the device: it ignores the field in
+       the Rules of the group, which is neither sent nor read in the
+       SCHC packets, in both directions. The Core, which has the
+       values, uses them as the Target Values of its own Rules of
+       the group and restores the field of the packets of the
+       device. This is the creation for a constrained device or
+       application, with the template (optional) and the number of
+       the group only.";
+    input {
+      leaf group-id {
+        type uint32;
+        mandatory true;
+        description
+          "Number of the group of Rules to create. It identifies the
+           application on the device, and must not already be used by
+           another group.";
+      }
+      uses group-parameters;
+      leaf template-id {
+        type leafref {
+          path "/schc:schc/schc-ccmgmt:template/schc-ccmgmt:template-id";
+        }
+        default "0";
+        description
+          "Template of the group: the Rules to duplicate. A device
+           usually has a single template, the template 0, which is
+           used when this parameter is absent.";
+      }
+    }
+    output {
+      leaf status {
+        type enumeration {
+          enum success-with-validation {
+            value 0;
+            description
+              "The group has been created and validated.";
+          }
+          enum success-not-validated {
+            value 1;
+            description
+              "The group has been created, but not validated yet.";
+          }
+          enum group-already-exists {
+            value -1;
+            description
+              "The group number is already used.";
+          }
+          enum no-rule-id-available {
+            value -2;
+            description
+              "There is not enough free RuleIDs to create the Rules of
+               the group: a RuleID is greater than 14, used by another
+               Rule, or invalid, because the Guard period of a deleted
+               group is running.";
+          }
+          enum invalid-parameter {
+            value -3;
+            description
+              "A parameter cannot be used in the Rules of the group.";
+          }
+          enum template-not-found {
+            value -4;
+            description
+              "The template given by 'template-id' does not exist.";
+          }
+          enum from-rule-not-found {
+            value -5;
+            description
+              "A RuleID of the template does not exist.";
+          }
+        }
+        description
+          "Result of the creation. A negative value indicates that the
+           group has not been created.";
+      }
+    }
+  }
+
+  rpc list-rule-groups {
+    if-feature "schc:management";
+    description
+      "List the groups of Rules which exist on the device. A group is
+       listed when its Rules are valid: a group which is being created
+       (candidate Rules) or deleted (invalid Rules, the Guard period is
+       running) is not listed. The Core can use the list to know the
+       applications the device has Rules for, for instance after it has
+       lost its own state, and to find the number of the next group.
+       By default only the numbers of the groups are returned; the
+       input 'details' asks for their content.";
+    input {
+      leaf details {
+        type boolean;
+        default "false";
+        description
+          "When true, the content of each group is returned (its
+           template and its parameters). By default (false) only the
+           number of the groups is returned.";
+      }
+    }
+    output {
+      list group {
+        key "group-id";
+        description
+          "A group of Rules of the device.";
+        leaf group-id {
+          type uint32;
+          description
+            "Number of the group of Rules.";
+        }
+        leaf template-id {
+          type leafref {
+            path "/schc:schc/schc-ccmgmt:template/schc-ccmgmt:template-id";
+          }
+          description
+            "Template the Rules of the group have been duplicated
+             from. Only present when 'details' is true.";
+        }
+        uses group-parameters {
+          description
+            "The parameters of the application of the group, present
+             when 'details' is true and when they have been given at
+             the creation of the group.";
+        }
+      }
+    }
+  }
+
+  rpc delete-rule-group {
+    if-feature "schc:management";
+    description
+      "Delete a group of Rules. It follows the deletion of Rules of
+       the Rule management (rule status): the Rules of the group, and
+       their RuleIDs, become 'status-invalid' on the node which
+       receives the request, when it receives it, and on the node
+       which sends it, when it sends it. The SCHC packets which carry
+       one of these RuleIDs are dropped and the RuleIDs cannot be used
+       by a new group during the Guard period, which starts when the
+       request is received (receiver) or when the acknowledgment is
+       received (initiator). When the Guard period is over, the
+       RuleIDs are free and the number of the group can be used again.
+
+       The deletion is idempotent: when the group does not exist, or
+       is already deleted, the request is acknowledged as the first
+       one, and the Guard period is started again. The Rules of a
+       group are never origin Rules, so the deletion is never refused
+       for this reason. The initiator repeats the request until it
+       receives the acknowledgment.";
+    input {
+      leaf group-id {
+        type uint32;
+        mandatory true;
+        description
+          "Number of the group of Rules to delete, given when it has
+           been created.";
+      }
+    }
+    output {
+      leaf status {
+        type enumeration {
+          enum success {
+            value 0;
+            description
+              "The Rules of the group are invalid, or the group did
+               not exist.";
+          }
+        }
+        description
+          "Result of the deletion.";
+      }
+    }
+  }
+
+  rpc reset-group {
+    if-feature "schc:management";
+    description
+      "Delete all the groups of Rules at once, for instance when the
+       Core starts again and does not know the groups which exist on
+       the device any more. Every group, whatever its status
+       (candidate or valid), is deleted as 'delete-rule-group' does:
+       its Rules, and their RuleIDs, become 'status-invalid' on the
+       node which receives the request, when it receives it, and on
+       the node which sends it, when it sends it. The SCHC packets
+       which carry one of these RuleIDs are dropped, and the RuleIDs
+       and the numbers of the groups can be used again when the
+       Guard period is over, which starts at the same moments.
+
+       The Rules which are not in a group (the origin Rules: the
+       Rules of management, the trigger Rules, the templates) are
+       kept. Only the groups of Rules are reset: the 'reset-context'
+       RPC of ietf-schc-basic-mgmt, which resets the whole Set of
+       Rules, is another module.
+
+       The reset is idempotent: when there is no group, the request
+       is acknowledged as the first one. It is not refused for a
+       status reason, since a group is never an origin Rule. The
+       initiator repeats the request until it receives the
+       acknowledgment.";
+    output {
+      leaf status {
+        type enumeration {
+          enum success {
+            value 0;
+            description
+              "The Rules of all the groups are invalid, or there was
+               no group.";
+          }
+        }
+        description
+          "Result of the reset.";
+      }
+    }
+  }
+}
