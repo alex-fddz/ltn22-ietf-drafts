@@ -36,6 +36,7 @@ author:
 normative:
   I-D.ietf-schc-universal-option:
   I-D.toutain-schc-rfc9363bis:
+  I-D.toutain-schc-rule-action:
   RFC2119:
   RFC4443:
   RFC4861:
@@ -516,6 +517,14 @@ If a Device is pinged, a Rule similar to the one described in
 {{DevicePings}} can be used, with the Echo Request in the downlink
 direction and the Echo Reply in the uplink direction.
 
+Such a Rule sends the Echo Request over the constrained link and the
+Device answers, which consumes energy and bandwidth for a message that
+carries no useful information. An optimization avoids using the
+constrained link: the SCHC Core can act as a proxy and answer the
+Echo Request on behalf of the Device. This behavior relies on the Action
+of a Rule (`action-proxy-ping`) defined in
+{{I-D.toutain-schc-rule-action}}.
+
 # Device is the source of an ICMPv6 error message {#ProxyErrMsg}
 
 As stated in {{RFC4443}}, a node should generate an ICMPv6 message in
@@ -789,6 +798,9 @@ draft. Their contribution is deeply appreciated and acknowledged.
 * {{DeviceIsPinged}}: in the example Rule, the Echo Request Type is written 128 (it was 80,
   its hexadecimal value) and the Code and Sequence Number target values 0, like the
   other tables; the paragraph layout was cleaned up.
+* {{DeviceIsPinged}}: added a paragraph stating that the SCHC Core can answer the
+  Echo Request on behalf of the Device (ping proxy, {{I-D.toutain-schc-rule-action}}),
+  to avoid using the constrained link.
 * {{yang-tree}}: the section was renamed "YANG Data Model Extensions" and now
   lists every YANG element related to this document (Field IDs, MOs, CDAs),
   stating that the complete module is in {{I-D.toutain-schc-rfc9363bis}}.
