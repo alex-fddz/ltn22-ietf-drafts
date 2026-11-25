@@ -510,78 +510,11 @@ The transmission cost of the Echo Request message is therefore the size
 of the Rule Id + 3 bits and the data size increased of the Payload
 residue size. The rule ID Length can be chosen to avoid adding padding.
 
-# Device is pinged {#action}
+# Device is pinged {#DeviceIsPinged}
 
-If a Device is pinged, a Rule similar to the one described in the
-previous section can be used, but it may be more efficient to delegate
-the answer to the SCHC Core.
-
-Selecting a compression Rule triggers compression and sends the
-resulting SCHC Packet to the other end.
-
-We introduce a new element called `action` for the Rule. An Action
-can change that behavior: the Rule is still selected through its MO
-results, but the incoming packet is forwarded to a procedure defined in
-the `action`. Since the Rule is then used only for the selection, the
-Compression/Decompression Actions of its entries do not matter and are
-set to `not-sent`.
-
-The motivating example is an ICMPv6 {{RFC4443}} Echo Request sent to
-a Device. The Device receives the compressed message and answers
-with an Echo Reply, but propagating the Echo Request over the LPWAN
-costs two messages on a constrained link, and the Identifier and
-Sequence Number fields compress poorly when the sender is unaware of
-the compression scheme. The Action `action-proxy-ping` avoids that
-traffic: the core SCHC C/D answers the Echo Request on behalf of the
-Device.
-
-The Action takes a parameter, in seconds, giving the interval during
-which the Device is considered active. During this interval, the
-proxy echoes the ping requests; after it, they are discarded. The
-parameter is carried in `action-value`, a list reusing the Target
-Value structure, so an Action may take several arguments.
-
-{{fig-action-rule}} shows a compression Rule for pinging a Device,
-with the identity short names used in the Field and CDA columns. The
-Action applies to the Rule as a whole, and is therefore shown above its
-entries.
-
-~~~ aasvg
-+--------------------------+
-| Action: proxy-ping(300)  |
-+----+----------------+----+----+----+----+---------+----------+
-| #  | Field          | FL | FP | DI | TV | MO      | CDA      |
-+----+----------------+----+----+----+----+---------+----------+
-| IPv6 Headers description (omitted)                           |
-+----+----------------+----+----+----+----+---------+----------+
-| 10 | icmpv6-type    | 8  | 1  | Dw | 128| equal   | not-sent |
-| 11 | icmpv6-code    | 8  | 1  | Bi | 0  | equal   | not-sent |
-| 12 | icmpv6-        | 16 | 1  | Bi | -  | ignore  | not-sent |
-|    | identifier     |    |    |    |    |         |          |
-| 13 | icmpv6-        | 16 | 1  | Bi | 0  | MSB(24) | not-sent |
-|    | sequence       |    |    |    |    |         |          |
-+----+----------------+----+----+----+----+---------+----------+
-~~~
-{: #fig-action-rule title="Example Compression Rule for a Ping to a Device"}
-
-In the data model, the Action is added to the compression Rule
-itself, as a sibling of its entries, and not to a single entry:
-
-* `action`: an identityref to `action-type`, defaulting to
-  `action-forward`. Being optional and defaulted, a Rule that does
-  not carry it behaves exactly as in RFC 8724 {{RFC8724}}.
-* `action-value`: the Action's arguments, a list based on the Target
-  Value structure, as for Matching Operator and
-  Compression/Decompression Action arguments.
-
-The corresponding new identities are:
-
-* `action-base-type`: base identity for the Action applied to a
-  packet matching a compression Rule.
-* `action-forward`: the default, where the packet is handed over to
-  the lower layer, as specified in RFC 8724 {{RFC8724}}.
-* `action-proxy-ping`: the packet is processed locally by a ping
-  proxy, which answers the Echo Request on behalf of the Device.
+If a Device is pinged, a Rule similar to the one described in
+{{DevicePings}} can be used, with the Echo Request in the downlink
+direction and the Echo Reply in the uplink direction.
 
 # Device is the source of an ICMPv6 error message {#ProxyErrMsg}
 
@@ -777,13 +710,6 @@ the variable length in it is in bytes.
 * `cda-compress-sent`: the direction used for compression is the same
   as for the incoming message.
 
-The new elements of the Rule and the Action identities ({{action}}):
-
-* `action` and `action-value`: leaves of the compression Rule, as
-  siblings of its entries, giving the Action and its arguments.
-* `action-base-type`, `action-forward`, `action-proxy-ping`: the
-  identities of the Actions.
-
 # Security considerations {#security-considerations}
 
 flood the return path with ICMP error messages.
@@ -851,19 +777,26 @@ draft. Their contribution is deeply appreciated and acknowledged.
   `rev-rule-match` and the second and third rule examples
   (`Fig-icmp-error2`, `Fig-icmp-error3`), now covered by {{newMO}} and
   {{fig-example-icmpv6}}, which are referenced instead.
-* {{action}} ("Device is pinged"): new section copied from {{I-D.toutain-schc-rfc9363bis}}, describing the
+* {{DeviceIsPinged}} ("Device is pinged"): new section copied from {{I-D.toutain-schc-rfc9363bis}}, describing the
   Action of a Rule (`action`, `action-value`, `action-forward`,
   `action-proxy-ping`) with the ping proxy example; the reference to the
   entry-index column and short names of the other draft was reworded, and the
   reference to the draft-barthel-lpwan-oam-schc draft was removed.
-* {{action}}: the section now starts by stating that a Rule similar to the one of
+* {{DeviceIsPinged}}: the section now starts by stating that a Rule similar to the one of
   {{DevicePings}} can be used, but that it may be more efficient to delegate
   the answer to the SCHC Core.
-* {{action}}: added the sentence introducing the new `action` element of the Rule.
-* {{action}}: in {{fig-action-rule}}, the Echo Request Type is written 128 (it was 80,
+* {{DeviceIsPinged}}: added the sentence introducing the new `action` element of the Rule.
+* {{DeviceIsPinged}}: in the example Rule, the Echo Request Type is written 128 (it was 80,
   its hexadecimal value) and the Code and Sequence Number target values 0, like the
   other tables; the paragraph layout was cleaned up.
 * {{yang-tree}}: the section was renamed "YANG Data Model Extensions" and now
-  lists every YANG element related to this document (Field IDs, MOs, CDAs,
-  Action), stating that the complete module is in {{I-D.toutain-schc-rfc9363bis}}.
+  lists every YANG element related to this document (Field IDs, MOs, CDAs),
+  stating that the complete module is in {{I-D.toutain-schc-rfc9363bis}}.
 * Authors: added Marion Dumay as the last co-author.
+* {{DeviceIsPinged}}: the Action of a Rule (`action`, `action-value`,
+  `action-forward`, `action-proxy-ping`) and the ping proxy example were
+  moved to a new draft, draft-toutain-schc-rule-action, since the Action
+  is not specific to ICMPv6; the section only keeps the Rule for a ping
+  to the Device.
+* {{yang-tree}}: removed the `action` and `action-value` leaves and the
+  Action identities.
