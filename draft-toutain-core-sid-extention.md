@@ -365,7 +365,8 @@ integer, and the identityref for "battery" (60005+1) is also an integer
 pointing to the SID "med-level" (60004). Since "battery" is a union of an
 identityref and of an integer, the identityref is enclosed by the CBOR
 tag 45 ({{Section 6.12 of RFC9254}}): 45(60004) is the identity
-"med-level", while 42 would be a percentage.
+"med-level", while a battery level of 75 percent would be encoded as the
+untagged integer 75.
 
 ~~~~
 b'a119ea65a3050001d82d19ea640282a2010002182aa201010216'
@@ -607,9 +608,10 @@ tag {{RFC9254}}.
 In {{Fig-SID-extension}}, the leaf "battery" is a union of an
 identityref, giving a qualitative level, and of an integer, giving a
 percentage: its "type" list has two entries. The JSON value
-"sensor:med-level" is an identity, and 42 is a percentage. In CBOR, both
-are integers, and the identityref is enclosed by the CBOR tag 45:
-45(60004) is the identity "med-level", while 42 is the percentage.
+"sensor:med-level" is an identity, and the JSON number 75 is a
+percentage. In CBOR, both are integers, and only the identityref is
+enclosed by the CBOR tag 45: 45(60004) is the identity "med-level",
+while the untagged integer 75 is the percentage.
 
 ## Keys of a List {#sid-ext-key-mapping}
 
