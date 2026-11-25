@@ -7,3 +7,6 @@
 *.txt
 *.html
 *.pdf
+
+# macOS
+.DS_Store
