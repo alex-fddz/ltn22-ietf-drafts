@@ -607,6 +607,8 @@ The Content-Formats TBD2 and TBD3 are those of
 # Changes {#changes}
 
 * Initial version.
+* {{acknowledgments}}: added, with the role of Claude in the writing of
+  this document.
 * {{device-discovery}}: the device no longer needs "/.well-known/core",
   which is not compact and identifies the modules by their names. The
   new module "ietf-coreconf-well-known" ({{well-known-module}}) lists
@@ -661,3 +663,12 @@ The Content-Formats TBD2 and TBD3 are those of
   style is ambiguous, since the "ietf-" prefix of a module name does not
   always point to an official YANG data model, while a SID is
   non-ambiguous and leads to the YANG data model or to the SID file.
+
+# Acknowledgments {#acknowledgments}
+{:numbered="false"}
+
+The authors thank Claude (Anthropic) for rewriting parts of this
+document in more correct English, for checking its consistency, for
+writing the YANG module from the authors' design and validating it with
+pyang, and for checking the examples: the CBOR encodings and the
+SID-based locations against {{I-D.ietf-core-comi}}.
