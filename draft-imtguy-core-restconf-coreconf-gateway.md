@@ -108,6 +108,15 @@ extensions {{I-D.toutain-core-sid-extension}}. These files can be
 directly stored inside the gateway, or can be discovered using the DNS
 {{I-D.toutain-core-sid-encoding}}.
 
+The gateway serves several devices. The device addressed by a RESTCONF
+request is given by the host name of the request: the name of the
+device followed by the domain of the gateway. For instance, the device
+"device.example.com" is reached through the gateway "gw.example.net"
+with the host name "device.example.com.gw.example.net". A DNS wildcard
+record for "*.gw.example.net" points all these names to the gateway,
+which then reaches the device with CoAP at the address of
+"device.example.com".
+
 ## Example {#example}
 
 The examples use the module ietf-system {{RFC7317}}, with the SIDs
@@ -222,89 +231,102 @@ The notifications use the module example-port of {{I-D.ietf-core-comi}},
 whose notification example-port-fault (SID 60010) contains the leaves
 port-name (SID 60011) and port-fault (SID 60012).
 
-A RESTCONF client receives the notifications of an event stream with
-Server-Sent Events, by a GET on the location of the stream, as
-specified in {{Section 6 of RFC8040}}. The location of a stream is
-chosen by the server, and discovered by the client in the
-"ietf-restconf-monitoring" module. The gateway therefore reuses the
-paths of the device: the location of an event stream of the device is
-its path, "/s" in the examples, and the location of the stream of a
-single notification is this path followed by the path of the
-notification in the XPath style, for instance
-"/s/example-port:example-port-fault". When it receives the GET, the
-gateway observes the event stream of the device {{RFC7641}}, and
-converts each CORECONF notification into a Server-Sent Event, encoded
-in JSON. Since a CORECONF notification does not carry the time of the
-event, the gateway sets the "eventTime" to the time at which it receives
-the notification.
+A RESTCONF client receives the notifications as Server-Sent Events, by
+a GET on the location of a stream, as long as it stays connected
+({{Section 6 of RFC8040}}). The location of a stream is chosen by the
+server, and listed in the "ietf-restconf-monitoring" module. The gateway
+lists one stream for each notification of the modules of the device,
+whose location is "/s/" followed by the path of the notification in the
+XPath style, for instance "/s/example-port:example-port-fault". It
+converts this path into the SID of the notification, and observes the
+event stream of the device with a FETCH {{RFC7641}}.
+
+Each CORECONF notification is sent as specified in
+{{Section 6.4 of RFC8040}}: the data of the event is the notification in
+JSON, the SIDs being replaced by the names, within the
+"ietf-restconf:notification" container, and without the "event" field.
+Since a CORECONF notification does not carry the time of the event, the
+gateway sets the "eventTime" to the time at which it receives the
+notification. When a CoAP notification carries several notifications,
+ordered from the newest {{I-D.ietf-core-comi}}, the gateway sends them
+from the oldest to the newest.
+
+{{fig-notif-seq}} shows the exchanges between the device, the gateway,
+and the RESTCONF client, with the content of each message next to its
+arrow. TBD2 is the Content-Format application/yang-identifiers+cbor-seq,
+and TBD3 the Content-Format application/yang-instances+cbor-seq
+{{I-D.ietf-core-comi}}.
 
 ~~~~
-GET /s HTTP/1.1
-Host: gateway.example.com
-Accept: text/event-stream
+ Device   Gateway  RESTCONF
+                    client
+   |        |        |
+   |        |<-------|  GET /s/example-port:
+   |        |        |      example-port-fault HTTP/1.1
+   |        |        |  Host: device.example.com.gw.example.net
+   |        |        |  Accept: text/event-stream
+   |        |        |
+   |<-------|        |  FETCH /s
+   |        |        |  Observe: 0
+   |        |        |  Content-Format: TBD2
+   |        |        |  60010                / example-port-fault /
+   |        |        |  CBOR: 19 ea 6a
+   |        |        |
+   |------->|        |  2.05 Content
+   |        |        |  Observe: 12
+   |        |        |  Content-Format: TBD3
+   |        |        |  {60010 : {           / example-port-fault /
+   |        |        |     1 : "0/4/21",       / port-name /
+   |        |        |     2 : "Open pin 2"}}  / port-fault /
+   |        |        |  CBOR: a1 19 ea 6a a2 01 66 30 2f 34 2f
+   |        |        |        32 31 02 6a 4f 70 65 6e 20 70 69
+   |        |        |        6e 20 32
+   |        |        |
+   |        |------->|  HTTP/1.1 200 OK
+   |        |        |  Content-Type: text/event-stream
+   |        |        |
+   |        |        |  data: {"ietf-restconf:notification": {
+   |        |        |  data:  "eventTime": "2026-11-26T10:00:00Z",
+   |        |        |  data:  "example-port:example-port-fault": {
+   |        |        |  data:   "port-name": "0/4/21",
+   |        |        |  data:   "port-fault": "Open pin 2"}}}
+   |        |        |
+   |        |------->|  : waiting
+   |        |        |
+   |------->|        |  2.05 Content
+   |        |        |  Observe: 13
+   |        |        |  Content-Format: TBD3
+   |        |        |  {60010 : {...}}      / example-port-fault /
+   |        |        |
+   |        |------->|  data: {"ietf-restconf:notification": {...}}
+   |        |        |
+~~~~
+{: #fig-notif-seq title="Time sequence of a subscription to a notification"}
 
-  GET /s
-  Observe: 0
+While no notification arrives, the gateway periodically sends a
+Server-Sent Events comment (": waiting"), so that the client and the
+intermediaries do not close the connection.
 
-  2.05 Content
-  Observe: 12
-  Content-Format: TBD3 (application/yang-instances+cbor-seq)
+When the device does not answer the FETCH, the gateway does not start
+the stream, and answers with an error, as specified in
+{{Section 7 of RFC8040}}:
 
-  {
-    60010 : {             / example-port-fault (SID 60010) /
-      1 : "0/4/21",       / port-name (SID 60011) /
-      2 : "Open pin 2"    / port-fault (SID 60012) /
-    }
+~~~~
+HTTP/1.1 500 Internal Server Error
+Content-Type: application/yang-data+json
+
+{
+  "ietf-restconf:errors" : {
+    "error" : [
+      {
+        "error-type" : "application",
+        "error-tag" : "operation-failed",
+        "error-message" : "no answer from the device"
+      }
+    ]
   }
-
-  CBOR: a1 19 ea 6a a2 01 66 30 2f 34 2f 32 31 02 6a 4f 70 65 6e 20
-        70 69 6e 20 32
-
-HTTP/1.1 200 OK
-Content-Type: text/event-stream
-
-data: {
-data:   "ietf-restconf:notification" : {
-data:     "eventTime" : "2026-11-26T10:00:00Z",
-data:     "example-port:example-port-fault" : {
-data:       "port-name" : "0/4/21",
-data:       "port-fault" : "Open pin 2"
-data:     }
-data:   }
-data: }
+}
 ~~~~
-
-Each new CoAP notification of the device gives one or several
-Server-Sent Events on the same HTTP connection. When a CoAP
-notification carries several notifications, ordered from the newest
-{{I-D.ietf-core-comi}}, the gateway sends them from the oldest to the
-newest.
-
-On the stream of a single notification, the gateway converts the path
-of the notification into its SID, and observes the event stream of the
-device with a FETCH, which only returns this notification.
-
-~~~~
-GET /s/example-port:example-port-fault HTTP/1.1
-Host: gateway.example.com
-Accept: text/event-stream
-
-  FETCH /s
-  Observe: 0
-  Content-Format: TBD2 (application/yang-identifiers+cbor-seq)
-
-  60010                   / example-port-fault (SID 60010) /
-
-  CBOR: 19 ea 6a
-~~~~
-
-A RESTCONF client can also restrict the notifications with the "filter"
-query parameter ({{Section 4.8.4 of RFC8040}}). When the XPath
-expression only designates notifications, the gateway converts it into
-their SIDs, as for the stream of a single notification. A more complex
-expression, for instance testing the value of a leaf, cannot be
-converted into SIDs: the gateway then observes the whole stream and
-applies the filter itself.
 
 # Bootstrap and SID File Discovery {#bootstrap}
 
@@ -616,6 +638,37 @@ The Content-Formats TBD2 and TBD3 are those of
   well-known SID (TBD4) that the gateway retrieves with a FETCH. The
   YANG library is only read when the features or deviations are
   needed.
+* {{notifications}}: the content of each message is written next to its
+  arrow in the time sequence diagram, which replaces the figure detailing
+  the messages.
+* {{notifications}}: the example is shown as a time sequence diagram
+  between the device, on the left, the gateway, and the RESTCONF client
+  ({{fig-notif-seq}}), the text of each message being under its arrow, with numbered messages detailed in
+  a separate figure, instead of a list of labeled messages.
+* {{notifications}}: aligned on {{RFC8040}}: one stream per notification
+  of the device, listed in "ietf-restconf-monitoring", with the location
+  "/s/" followed by the path of the notification; the data of each event
+  is within the "ietf-restconf:notification" container with an
+  "eventTime" set by the gateway; no "event" field; an error is an HTTP
+  error with "ietf-restconf:errors" instead of an "error" event. The
+  target is restricted to notifications.
+* {{notifications}}: rewritten after the format of an implemented
+  gateway: a single form, a GET on "/s/" followed by a target in the
+  XPath style (a notification or a notified data node), converted into
+  a FETCH with Observe on the event stream of the device; each
+  notification is an event named "notification" with its JSON data,
+  a comment (": waiting") keeps the connection open, and an error is an
+  event named "error". The subscription to the whole stream, the
+  "eventTime" set by the gateway, and the "filter" query parameter were
+  removed.
+* {{architecture}}: the device addressed by a RESTCONF request is given
+  by the host name of the request, the name of the device followed by
+  the domain of the gateway (e.g., "device.example.com.gw.example.net"),
+  and the "Host" of the examples follows this convention.
+* {{notifications}}: each message of the examples is preceded by its
+  sender and receiver, and the text states that the HTTP messages start
+  at the margin and the CoAP messages are indented, since the RESTCONF
+  GET and the CoAP GET on "/s" looked like the same request repeated.
 * {{notifications}}: the location of a RESTCONF stream reuses the path
   of the event stream of the device ("/s"), followed, for the stream of
   a single notification, by the path of the notification in the XPath
