@@ -67,10 +67,18 @@ normative:
 --- abstract
 
 <!--
-As the Internet of Things (IoT) systems are becoming more pervasive with their rapid adoption, they are also becoming more complex in their architecture. Hence, a tool is required to generate prototype code based on the YANG models for constrained devices {{RFC7228}}  to improve interoperability and increase the reusability of software components. A novel approach is introduced in this document to generate software prototypes (also called stubs) in the C language for the CORECONF protocol {{I-D.ietf-core-comi}} using YANG Schema Item iDentifiers (YANG SID {{I-D.ietf-core-sid}}). These stubs greatly reduce the complexity of navigating the CORECONF structure by abstracting the corresponding YANG SIDs.  This document elaborates on the procedure to generate YANG SIDs for a given YANG model of a system, which then generates C stubs using the tools developed by the authors with the help of an example (sensor.yang file).
--->
 TBD: to focus on sid extension to allow some manipulations of a CORECONF
 datastore without the need to get the full YANG DM.
+-->
+As Internet of Things (IoT) systems become more widely adopted, their
+architectures are also becoming more complex. This document defines an
+extension to the YANG SID file {{I-D.ietf-core-sid}} that adds selected
+metadata from a YANG data model, including leaf types and YANG-list
+keys. This metadata supports processing CORECONF data
+{{I-D.ietf-core-comi}} using the SID file, without requiring the full
+YANG data model or a YANG parser. The document describes how to generate
+the extended SID file from a YANG model and how its metadata can be used
+to interpret values and identify list entries.
 
 --- middle
 
